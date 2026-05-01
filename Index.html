@@ -39,17 +39,18 @@
     .markdown-body ul, .markdown-body ol { margin:0.45em 0; padding-left:1.5em; }
     .markdown-body code { background:#eef2f7; border-radius:4px; padding:0.1em 0.3em; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
     .markdown-body blockquote { margin:0.6em 0; padding:0.4em 0.8em; border-left:4px solid var(--border); background:#fff; color:#374151; }
-    .metric { position:relative; border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; background:#fbfdff; }
-    .metric-title { display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:800; margin-bottom:8px; }
+    .metric { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) minmax(190px, 240px); gap:12px; align-items:center; border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; background:#fbfdff; }
+    .metric-title { display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:800; }
     .metric-title-text { min-width:0; }
     .metric-help-button { flex:0 0 auto; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:50%; padding:0; background:#fff; color:var(--primary); font-size:.9rem; line-height:1; font-weight:800; }
     .metric-help-button:hover, .metric-help-button:focus { border-color:var(--primary); background:#eff6ff; outline:0; }
     .knowledge-popover { display:none; position:absolute; z-index:20; top:44px; right:14px; width:min(320px, calc(100% - 28px)); padding:10px 12px; border:1px solid #bfdbfe; border-radius:10px; background:#eff6ff; color:#1e3a8a; font-size:.94rem; line-height:1.6; box-shadow:0 12px 28px rgba(15,23,42,.18); }
     .knowledge-popover::before { content:""; position:absolute; top:-7px; right:10px; width:12px; height:12px; border-left:1px solid #bfdbfe; border-top:1px solid #bfdbfe; background:#eff6ff; transform:rotate(45deg); }
     .knowledge-popover.active { display:block; }
-    .radio-group { display:grid; gap:8px; }
-    .radio-option { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; cursor:pointer; }
-    .radio-option:has(input:checked) { border-color:var(--primary); background:#eff6ff; }
+    .metric-select { width:100%; border:1px solid var(--border); border-radius:12px; padding:10px 12px; font:inherit; background:#fff; }
+    .metric-select:required:invalid { color:var(--muted); }
+    .metric-select option { color:var(--text); }
+    .metric-select:focus { border-color:var(--primary); outline:3px solid rgba(37,99,235,.16); }
     textarea, input[type="text"] { width:100%; border:1px solid var(--border); border-radius:12px; padding:12px; font:inherit; background:#fff; }
     .muted { color:var(--muted); font-size:.95rem; }
     .progress { font-weight:800; margin-bottom:12px; }
@@ -64,6 +65,7 @@
       .left-card { max-height:none; overflow:visible; }
       .right-card { max-height:none; }
       .relative-box { min-height:320px; }
+      .metric { grid-template-columns:1fr; align-items:stretch; }
     }
   </style>
 </head>
@@ -122,7 +124,6 @@
 
         <div class="card right-card">
           <h2>考慮判定</h2>
-          <p class="muted">すべての項目を選択すると保存できます。</p>
           <div id="metricsForm"></div>
           <p id="formError" class="error"></p>
           <p id="saveStatus" class="ok"></p>
@@ -195,25 +196,37 @@
         .split('\n');
       let html = '';
       let inList = false;
+      let inBlockquote = false;
       function closeList() { if (inList) { html += '</ul>'; inList = false; } }
+      function closeBlockquote() { if (inBlockquote) { html += '</blockquote>'; inBlockquote = false; } }
       lines.forEach(function (line) {
         const trimmed = line.trim();
-        if (trimmed === '') { closeList(); return; }
-        if (/^---+$/.test(trimmed)) { closeList(); html += '<hr>'; return; }
-        if (/^#### +/.test(trimmed)) { closeList(); html += '<h4>' + inlineMarkdown(trimmed.replace(/^#### +/, '')) + '</h4>'; return; }
-        if (/^### +/.test(trimmed)) { closeList(); html += '<h3>' + inlineMarkdown(trimmed.replace(/^### +/, '')) + '</h3>'; return; }
-        if (/^## +/.test(trimmed)) { closeList(); html += '<h2>' + inlineMarkdown(trimmed.replace(/^## +/, '')) + '</h2>'; return; }
-        if (/^# +/.test(trimmed)) { closeList(); html += '<h1>' + inlineMarkdown(trimmed.replace(/^# +/, '')) + '</h1>'; return; }
+        if (trimmed === '') { closeList(); closeBlockquote(); return; }
+        if (/^---+$/.test(trimmed)) { closeList(); closeBlockquote(); html += '<hr>'; return; }
+        if (/^#### +/.test(trimmed)) { closeList(); closeBlockquote(); html += '<h4>' + inlineMarkdown(trimmed.replace(/^#### +/, '')) + '</h4>'; return; }
+        if (/^### +/.test(trimmed)) { closeList(); closeBlockquote(); html += '<h3>' + inlineMarkdown(trimmed.replace(/^### +/, '')) + '</h3>'; return; }
+        if (/^## +/.test(trimmed)) { closeList(); closeBlockquote(); html += '<h2>' + inlineMarkdown(trimmed.replace(/^## +/, '')) + '</h2>'; return; }
+        if (/^# +/.test(trimmed)) { closeList(); closeBlockquote(); html += '<h1>' + inlineMarkdown(trimmed.replace(/^# +/, '')) + '</h1>'; return; }
         if (/^[-*] +/.test(trimmed)) {
+          closeBlockquote();
           if (!inList) { html += '<ul>'; inList = true; }
           html += '<li>' + inlineMarkdown(trimmed.replace(/^[-*] +/, '')) + '</li>';
           return;
         }
-        if (/^> ?/.test(trimmed)) { closeList(); html += '<blockquote>' + inlineMarkdown(trimmed.replace(/^> ?/, '')) + '</blockquote>'; return; }
+        if (/^> ?/.test(trimmed)) {
+          closeList();
+          if (!inBlockquote) { html += '<blockquote>'; }
+          else { html += '<br>'; }
+          inBlockquote = true;
+          html += inlineMarkdown(trimmed.replace(/^> ?/, ''));
+          return;
+        }
         closeList();
+        closeBlockquote();
         html += '<p>' + inlineMarkdown(line) + '</p>';
       });
       closeList();
+      closeBlockquote();
       return html;
     }
 
@@ -297,25 +310,24 @@
           event.stopPropagation();
         });
         block.appendChild(knowledge);
-        const group = document.createElement('div');
-        group.className = 'radio-group';
+        const select = document.createElement('select');
+        select.className = 'metric-select';
+        select.name = 'metric_' + metricIndex;
+        select.dataset.metric = metric;
+        select.required = true;
+        select.setAttribute('aria-label', metric + 'の考慮判定');
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '選択してください';
+        select.appendChild(placeholder);
         CHOICES.forEach(function (choice) {
-          const id = 'm_' + metricIndex + '_' + choice.value;
-          const label = document.createElement('label');
-          label.className = 'radio-option';
-          const input = document.createElement('input');
-          input.type = 'radio';
-          input.name = 'metric_' + metricIndex;
-          input.value = String(choice.value);
-          input.dataset.metric = metric;
-          input.checked = Number(existing[metric]) === choice.value;
-          const span = document.createElement('span');
-          span.textContent = choice.label;
-          label.appendChild(input);
-          label.appendChild(span);
-          group.appendChild(label);
+          const option = document.createElement('option');
+          option.value = String(choice.value);
+          option.textContent = choice.label;
+          option.selected = Number(existing[metric]) === choice.value;
+          select.appendChild(option);
         });
-        block.appendChild(group);
+        block.appendChild(select);
         container.appendChild(block);
       });
     }
@@ -323,8 +335,8 @@
     function collectRatings() {
       const ratings = {};
       METRICS.forEach(function (metric, metricIndex) {
-        const checked = document.querySelector('input[name="metric_' + metricIndex + '"]:checked');
-        if (checked) ratings[metric] = Number(checked.value);
+        const select = document.querySelector('select[name="metric_' + metricIndex + '"]');
+        if (select && select.value !== '') ratings[metric] = Number(select.value);
       });
       return ratings;
     }
