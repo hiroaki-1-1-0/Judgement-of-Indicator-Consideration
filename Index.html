@@ -40,12 +40,12 @@
     .markdown-body code { background:#eef2f7; border-radius:4px; padding:0.1em 0.3em; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
     .markdown-body blockquote { margin:0.6em 0; padding:0.4em 0.8em; border-left:4px solid var(--border); background:#fff; color:#374151; }
     .metric { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) minmax(190px, 240px); gap:12px; align-items:center; border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; background:#fbfdff; }
-    .metric-title { display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:800; }
+    .metric-title { display:flex; align-items:center; justify-content:flex-start; gap:8px; font-weight:800; }
     .metric-title-text { min-width:0; }
     .metric-help-button { flex:0 0 auto; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:50%; padding:0; background:#fff; color:var(--primary); font-size:.9rem; line-height:1; font-weight:800; }
     .metric-help-button:hover, .metric-help-button:focus { border-color:var(--primary); background:#eff6ff; outline:0; }
-    .knowledge-popover { display:none; position:absolute; z-index:20; top:44px; right:14px; width:min(320px, calc(100% - 28px)); padding:10px 12px; border:1px solid #bfdbfe; border-radius:10px; background:#eff6ff; color:#1e3a8a; font-size:.94rem; line-height:1.6; box-shadow:0 12px 28px rgba(15,23,42,.18); }
-    .knowledge-popover::before { content:""; position:absolute; top:-7px; right:10px; width:12px; height:12px; border-left:1px solid #bfdbfe; border-top:1px solid #bfdbfe; background:#eff6ff; transform:rotate(45deg); }
+    .knowledge-popover { display:none; position:absolute; z-index:20; top:var(--knowledge-top, 44px); left:var(--knowledge-left, 14px); width:min(320px, calc(100% - 28px)); padding:10px 12px; border:1px solid #bfdbfe; border-radius:10px; background:#eff6ff; color:#1e3a8a; font-size:.94rem; line-height:1.6; box-shadow:0 12px 28px rgba(15,23,42,.18); }
+    .knowledge-popover::before { content:""; position:absolute; top:-7px; left:var(--knowledge-arrow-left, 10px); width:12px; height:12px; border-left:1px solid #bfdbfe; border-top:1px solid #bfdbfe; background:#eff6ff; transform:rotate(45deg); }
     .knowledge-popover.active { display:block; }
     .metric-select { width:100%; border:1px solid var(--border); border-radius:12px; padding:10px 12px; font:inherit; background:#fff; }
     .metric-select:required:invalid { color:var(--muted); }
@@ -75,8 +75,14 @@
   <main>
     <section id="instructionScreen" class="screen active">
       <div class="card">
+        <h2>作業内容</h2>
         <h3>概要</h3>
         <p>大喜利回答を相対評価した際の文章において、評価指標が考慮されているか否かを判定するタスクです。</p>
+        <h3>流れ</h3>
+        <p>本画面で作業内容を把握したうえで、次の画面から判定を行ってください。</p>
+        <h3>注意点</h3>
+        <p>タブを削除・更新した場合、タスクをゼロから実施し直す必要が発生する点にご注意ください。</p>
+        <!--
         <h3>評価指標の事前知識</h3>
         <div class="notice">
           <ul>
@@ -93,7 +99,8 @@
             <li>「文字数の少なさ」：回答の文字数の少なさを指します。</li>
           </ul>
         </div>
-        <h3 class="label" id="workerNameHeading">名前（ランサーズ表示名）</h3>
+        -->
+        <h3 class="label" id="workerNameHeading">名前（ランサーズ表示名等）</h3>
         <input type="text" id="workerName" aria-labelledby="workerNameHeading" autocomplete="name" placeholder="例：山田太郎">
         <p id="nameError" class="error"></p>
         <button class="primary" onclick="startTask()">判定へ</button>
@@ -260,6 +267,21 @@
       });
     }
 
+    function positionMetricKnowledgePopover(button, popover) {
+      const block = button.closest('.metric');
+      if (!block) return;
+      const blockRect = block.getBoundingClientRect();
+      const buttonRect = button.getBoundingClientRect();
+      const popoverWidth = Math.min(320, block.clientWidth - 28);
+      const buttonCenter = buttonRect.left - blockRect.left + (buttonRect.width / 2);
+      const popoverLeft = Math.max(14, Math.min(buttonCenter - (popoverWidth / 2), block.clientWidth - popoverWidth - 14));
+      const arrowLeft = Math.max(10, Math.min(buttonCenter - popoverLeft - 6, popoverWidth - 22));
+
+      popover.style.setProperty('--knowledge-top', (buttonRect.bottom - blockRect.top + 8) + 'px');
+      popover.style.setProperty('--knowledge-left', popoverLeft + 'px');
+      popover.style.setProperty('--knowledge-arrow-left', arrowLeft + 'px');
+    }
+
     function renderItem() {
       const item = TASK_ITEMS[currentIndex];
       document.getElementById('progressText').textContent = '項目 ' + (currentIndex + 1) + ' / ' + TASK_ITEMS.length;
@@ -305,6 +327,7 @@
           closeMetricKnowledgePopovers(knowledge);
           const isOpen = knowledge.classList.toggle('active');
           helpButton.setAttribute('aria-expanded', String(isOpen));
+          if (isOpen) positionMetricKnowledgePopover(helpButton, knowledge);
         });
         knowledge.addEventListener('click', function (event) {
           event.stopPropagation();
@@ -403,6 +426,13 @@
 
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape') closeMetricKnowledgePopovers();
+    });
+
+    window.addEventListener('resize', function () {
+      document.querySelectorAll('.knowledge-popover.active').forEach(function (popover) {
+        const button = document.querySelector('[aria-controls="' + popover.id + '"]');
+        if (button) positionMetricKnowledgePopover(button, popover);
+      });
     });
   </script>
 </body>
