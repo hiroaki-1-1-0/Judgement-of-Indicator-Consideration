@@ -21,7 +21,7 @@
     #taskScreen.active { display:flex; height:calc(100vh - var(--header-height)); min-height:0; padding:var(--page-padding) calc(var(--panel-gap) * 2); overflow:hidden; }
     #taskScreen { max-width:none; width:100%; }
     .card { background:#fff; border:1px solid var(--border); border-radius:16px; padding:22px; box-shadow:0 8px 22px rgba(15,23,42,.06); }
-    .layout { flex:1; display:grid; grid-template-columns:minmax(0, 7fr) minmax(0, 3fr); gap:var(--panel-gap); align-items:stretch; height:100%; min-height:0; overflow:hidden; }
+    .layout { flex:1; display:grid; grid-template-columns:minmax(0, 6fr) minmax(0, 4fr); gap:var(--panel-gap); align-items:stretch; height:100%; min-height:0; overflow:hidden; }
     .left-card { min-height:0; max-height:calc(100vh - var(--header-height) - (var(--page-padding) * 2)); display:flex; flex-direction:column; overflow:hidden; }
     .right-card { align-self:start; max-height:calc(100vh - var(--header-height) - (var(--page-padding) * 2)); overflow:auto; }
     .field { margin-bottom:18px; }
@@ -39,8 +39,14 @@
     .markdown-body ul, .markdown-body ol { margin:0.45em 0; padding-left:1.5em; }
     .markdown-body code { background:#eef2f7; border-radius:4px; padding:0.1em 0.3em; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
     .markdown-body blockquote { margin:0.6em 0; padding:0.4em 0.8em; border-left:4px solid var(--border); background:#fff; color:#374151; }
-    .metric { border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; background:#fbfdff; }
-    .metric-title { font-weight:800; margin-bottom:8px; }
+    .metric { position:relative; border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; background:#fbfdff; }
+    .metric-title { display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:800; margin-bottom:8px; }
+    .metric-title-text { min-width:0; }
+    .metric-help-button { flex:0 0 auto; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:50%; padding:0; background:#fff; color:var(--primary); font-size:.9rem; line-height:1; font-weight:800; }
+    .metric-help-button:hover, .metric-help-button:focus { border-color:var(--primary); background:#eff6ff; outline:0; }
+    .knowledge-popover { display:none; position:absolute; z-index:20; top:44px; right:14px; width:min(320px, calc(100% - 28px)); padding:10px 12px; border:1px solid #bfdbfe; border-radius:10px; background:#eff6ff; color:#1e3a8a; font-size:.94rem; line-height:1.6; box-shadow:0 12px 28px rgba(15,23,42,.18); }
+    .knowledge-popover::before { content:""; position:absolute; top:-7px; right:10px; width:12px; height:12px; border-left:1px solid #bfdbfe; border-top:1px solid #bfdbfe; background:#eff6ff; transform:rotate(45deg); }
+    .knowledge-popover.active { display:block; }
     .radio-group { display:grid; gap:8px; }
     .radio-option { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; cursor:pointer; }
     .radio-option:has(input:checked) { border-color:var(--primary); background:#eff6ff; }
@@ -81,7 +87,7 @@
             <li>「無害な違反の度合い」：遊びや冗談として許容できる、傷つくほどではない「無害」と、道徳、規範、論理、物理的なルールが破られている「違反」を両立できている度合いを指します。</li>
             <li>「視点の転換度合い」：お題の視点から回答の視点への転換の度合いを指します。</li>
             <li>「特殊文字の少なさ」：「！」や「？」などの特殊文字の少なさを指します。</li>
-            <li>「お題と回答の文字数比率の低さ」：お題に対して回答が短いことを指します。</li>
+            <li>「お題に対する回答の短さ」：お題に対して回答が短いことを指します。</li>
             <li>「文字数の少なさ」：回答の文字数の少なさを指します。</li>
           </ul>
         </div>
@@ -144,6 +150,19 @@
       { label: '考慮していない', value: -1 },
       { label: '考慮しているか不明', value: 0 }
     ];
+    const METRIC_PRIOR_KNOWLEDGE = {
+      '語彙的新規性の低さ': '回答の語彙がお題の語彙と似たようなものであることを指します。',
+      '不一致の解消度合い': '回答がお題の予想外のものであり、かつ納得感を与えるものであることを指します。',
+      '比喩の使用度': '回答で比喩を使用する度合いを指します。',
+      '連想距離の遠さ': '回答がお題から連想しにくいことを指します。',
+      'ボケの面白さ': '冗談や間違いや面白い動作などの要素を回答に含めることによって引き起こされる笑いの面白さを指します。',
+      '曖昧さの活用度': 'お題の曖昧さを回答で活かした度合いを示します。',
+      '無害な違反の度合い': '遊びや冗談として許容できる、傷つくほどではない「無害」と、道徳、規範、論理、物理的なルールが破られている「違反」を両立できている度合いを指します。',
+      '視点の転換度合い': 'お題の視点から回答の視点への転換の度合いを指します。',
+      '特殊文字の少なさ': '「！」や「？」などの特殊文字の少なさを指します。',
+      'お題に対する回答の短さ': 'お題に対して回答が短いことを指します。',
+      '文字数の少なさ': '回答の文字数の少なさを指します。'
+    };
     let currentIndex = 0;
     let workerName = '';
     const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).slice(2);
@@ -219,6 +238,15 @@
       });
     }
 
+    function closeMetricKnowledgePopovers(exceptPopover) {
+      document.querySelectorAll('.knowledge-popover.active').forEach(function (popover) {
+        if (popover === exceptPopover) return;
+        popover.classList.remove('active');
+        const button = document.querySelector('[aria-controls="' + popover.id + '"]');
+        if (button) button.setAttribute('aria-expanded', 'false');
+      });
+    }
+
     function renderItem() {
       const item = TASK_ITEMS[currentIndex];
       document.getElementById('progressText').textContent = '項目 ' + (currentIndex + 1) + ' / ' + TASK_ITEMS.length;
@@ -242,8 +270,33 @@
         block.className = 'metric';
         const title = document.createElement('div');
         title.className = 'metric-title';
-        title.textContent = metric;
+        const titleText = document.createElement('span');
+        titleText.className = 'metric-title-text';
+        titleText.textContent = metric;
+        const helpButton = document.createElement('button');
+        helpButton.type = 'button';
+        helpButton.className = 'metric-help-button';
+        helpButton.textContent = '?';
+        helpButton.setAttribute('aria-label', metric + 'の事前知識を表示');
+        helpButton.setAttribute('aria-expanded', 'false');
+        helpButton.setAttribute('aria-controls', 'knowledge_' + metricIndex);
+        title.appendChild(titleText);
+        title.appendChild(helpButton);
         block.appendChild(title);
+        const knowledge = document.createElement('div');
+        knowledge.className = 'knowledge-popover';
+        knowledge.id = 'knowledge_' + metricIndex;
+        knowledge.textContent = METRIC_PRIOR_KNOWLEDGE[metric] || 'この評価指標の事前知識は登録されていません。';
+        helpButton.addEventListener('click', function (event) {
+          event.stopPropagation();
+          closeMetricKnowledgePopovers(knowledge);
+          const isOpen = knowledge.classList.toggle('active');
+          helpButton.setAttribute('aria-expanded', String(isOpen));
+        });
+        knowledge.addEventListener('click', function (event) {
+          event.stopPropagation();
+        });
+        block.appendChild(knowledge);
         const group = document.createElement('div');
         group.className = 'radio-group';
         CHOICES.forEach(function (choice) {
@@ -331,6 +384,14 @@
       currentIndex -= 1;
       renderItem();
     }
+
+    document.addEventListener('click', function () {
+      closeMetricKnowledgePopovers();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closeMetricKnowledgePopovers();
+    });
   </script>
 </body>
 </html>
